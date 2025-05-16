@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Volleyball Tracker</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    button { width: 30px; height: 30px; font-size: 18px; margin: 0 4px; cursor: pointer; }
+    .score-cell { min-width: 40px; }
+    .value-display { display: inline-block; width: 20px; text-align: center; font-weight: bold; }
+    .control-buttons { margin-top: 20px; }
+    .control-buttons button { width: auto; padding: 6px 12px; font-size: 16px; margin-right: 10px; cursor: pointer; }
+    #lineupSuggestion { margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Volleyball Serve & Pass Tracker</h1>
+
+  <div class="control-buttons">
+    <button id="resetBtn">Reset All</button>
+    <button id="downloadBtn">Download CSV</button>
+    <button id="suggestBtn">Suggest 3rd Set Lineup</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Player</th>
+        <th>Serve +</th>
+        <th>Serve -</th>
+        <th>Pass +</th>
+        <th>Pass -</th>
+        <th>Serve Score</th>
+        <th>Pass Score</th>
+        <th>Player Score</th>
+      </tr>
+    </thead>
+    <tbody id="playerTable"></tbody>
+  </table>
+
+  <div id="lineupSuggestion"></div>
+
+  <script>
+    const playersCount = 14;
+    const tableBody = document.getElementById('playerTable');
+    const lineupDiv = document.getElementById('lineupSuggestion');
+
+    const state = Array.from({ length: playersCount }, () => ({
+      servePlus: 0,
+      serveMinus: 0,
+      passPlus: 0,
+      passMinus: 0,
+    }));
+
+    function createButton(label, onClick) {
+      const btn = document.createElement('button');
+      btn.textContent = label;
+      btn.type = 'button';
+      btn.addEventListener('click', onClick);
+      return btn;
+    }
+
+    function updateScores(index) {
+      const serveScore = state[index].servePlus - state[index].serveMinus;
+      const passScore = state[index].passPlus - state[index].passMinus;
+      const playerScore = serveScore + passScore;
+
+      document.getElementById(`serveScore-${index}`).textContent = serveScore;
+      document.getElementById(`passScore-${index}`).textContent = passScore;
+      document.getElementById(`playerScore-${index}`).textContent = playerScore;
+
+      document.getElementById(`servePlusValue-${index}`).textContent = state[index].servePlus;
+      document.getElementById(`serveMinusValue-${index}`).textContent = state[index].serveMinus;
+      document.getElementById(`passPlusValue-${index}`).textContent = state[index].passPlus;
+      document.getElementById(`passMinusValue-${index}`).textContent = state[index].passMinus;
+    }
+
+    function incrementScore(index, type) {
+      state[index][type]++;
+      updateScores(index);
+    }
+
+    // Reset all values
+    function resetAll() {
+      for (let i = 0; i < playersCount; i++) {
+        state[i].servePlus = 0;
+        state[i].serveMinus = 0;
+        state[i].passPlus = 0;
+        state[i].passMinus = 0;
+        updateScores(i);
+      }
+      lineupDiv.textContent = '';
+    }
+
+    // Download CSV
+    function downloadCSV() {
+      const headers = ['Player','Serve +','Serve -','Pass +','Pass -','Serve Score','Pass Score','Player Score'];
+      const rows = [];
+
+      for (let i = 0; i < playersCount; i++) {
+        const serveScore = state[i].servePlus - state[i].serveMinus;
+        const passScore = state[i].passPlus - state[i].passMinus;
+        const playerScore = serveScore + passScore;
+        rows.push([
+          `Player ${i+1}`,
+          state[i].servePlus,
+          state[i].serveMinus,
+          state[i].passPlus,
+          state[i].passMinus,
+          serveScore,
+          passScore,
+          playerScore
+        ]);
+      }
+
+      let csvContent = headers.join(',') + '\n' +
+        rows.map(r => r.join(',')).join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'volleyball_tracker.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Suggest 3rd set lineup
+    function suggestLineup() {
+      // Build array with player data + scores
+      const playersData = state.map((stats, i) => {
+        const serveScore = stats.servePlus - stats.serveMinus;
+        const passScore = stats.passPlus - stats.passMinus;
+        const playerScore = serveScore + passScore;
+        return {
+          index: i,
+          name: `Player ${i+1}`,
+          serveScore,
+          passScore,
+          playerScore
+        };
+      });
+
+      // Sort descending by playerScore, then by passScore for ties
+      playersData.sort((a, b) => {
+        if (b.playerScore !== a.playerScore) return b.playerScore - a.playerScore;
+        return b.passScore - a.passScore;
+      });
+
+      // Find cutoff score for 6th place
+      let cutoffScore = playersData[5].playerScore;
+
+      // Collect all players with playerScore >= cutoffScore
+      let candidates = playersData.filter(p => p.playerScore >= cutoffScore);
+
+      // If more than 6 players because of tie on playerScore, break tie with passScore
+      if (candidates.length > 6) {
+        // Sort candidates by passScore descending
+        candidates.sort((a, b) => b.passScore - a.passScore);
+
+        // Trim to top 6
+        candidates = candidates.slice(0, 6);
+      }
+
+      // Display suggested lineup names
+      const lineupNames = candidates.map(p => p.name).join(', ');
+      lineupDiv.textContent = `Suggested 3rd Set Lineup: ${lineupNames}`;
+    }
+
+    // Build table rows
+    for (let i = 0; i < playersCount; i++) {
+      const row = document.createElement('tr');
+
+      const playerCell = document.createElement('td');
+      playerCell.textContent = `Player ${i + 1}`;
+      row.appendChild(playerCell);
+
+      // Serve +
+      const servePlusCell = document.createElement('td');
+      servePlusCell.appendChild(createButton('+', () => incrementScore(i, 'servePlus')));
+      const servePlusVal = document.createElement('span');
+      servePlusVal.id = `servePlusValue-${i}`;
+      servePlusVal.className = 'value-display';
+      servePlusVal.textContent = '0';
+      servePlusCell.appendChild(servePlusVal);
+      row.appendChild(servePlusCell);
+
+      // Serve -
+      const serveMinusCell = document.createElement('td');
+      serveMinusCell.appendChild(createButton('+', () => incrementScore(i, 'serveMinus')));
+      const serveMinusVal = document.createElement('span');
+      serveMinusVal.id = `serveMinusValue-${i}`;
+      serveMinusVal.className = 'value-display';
+      serveMinusVal.textContent = '0';
+      serveMinusCell.appendChild(serveMinusVal);
+      row.appendChild(serveMinusCell);
+
+      // Pass +
+      const passPlusCell = document.createElement('td');
+      passPlusCell.appendChild(createButton('+', () => incrementScore(i, 'passPlus')));
+      const passPlusVal = document.createElement('span');
+      passPlusVal.id = `passPlusValue-${i}`;
+      passPlusVal.className = 'value-display';
+      passPlusVal.textContent = '0';
+      passPlusCell.appendChild(passPlusVal);
+      row.appendChild(passPlusCell);
+
+      // Pass -
+      const passMinusCell = document.createElement('td');
+      passMinusCell.appendChild(createButton('+', () => incrementScore(i, 'passMinus')));
+      const passMinusVal = document.createElement('span');
+      passMinusVal.id = `passMinusValue-${i}`;
+      passMinusVal.className = 'value-display';
+      passMinusVal.textContent = '0';
+      passMinusCell.appendChild(passMinusVal);
+      row.appendChild(passMinusCell);
+
+      // Serve Score
+      const serveScoreCell = document.createElement('td');
+      serveScoreCell.id = `serveScore-${i}`;
+      serveScoreCell.className = 'score-cell';
+      serveScoreCell.textContent = '0';
+      row.appendChild(serveScoreCell);
+
+      // Pass Score
+      const passScoreCell = document.createElement('td');
+      passScoreCell.id = `passScore-${i}`;
+      passScoreCell.className = 'score-cell';
+      passScoreCell.textContent = '0';
+      row.appendChild(passScoreCell);
+
+      // Player Score
+      const playerScoreCell = document.createElement('td');
+      playerScoreCell.id = `playerScore-${i}`;
+      playerScoreCell.className = 'score-cell';
+      playerScoreCell.textContent = '0';
+      row.appendChild(playerScoreCell);
+
+      tableBody.appendChild(row);
+    }
+
+    // Add event listeners to control buttons
+    document.getElementById('resetBtn').addEventListener('click', resetAll);
+    document.getElementById('downloadBtn').addEventListener('click', downloadCSV);
+    document.getElementById('suggestBtn').addEventListener('click', suggestLineup);
+  </script>
+</body>
+</html>
