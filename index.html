@@ -1,26 +1,75 @@
-<script>
-  const tableBody = document.getElementById("playerTable");
-  const state = {};
-  const history = [];
-  const players = Array.from({ length: 14 }, (_, i) => `Player${i + 1}`); // changed from 12 to 14
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Volleyball Tracker</title>
+</head>
+<body>
+  <table border="1">
+    <thead>
+      <tr>
+        <th>Player</th>
+        <th>+ Serve</th>
+        <th>- Serve</th>
+        <th>Serves</th>
+        <th>Serve Attempts</th>
+        <th>+ Pass</th>
+        <th>- Pass</th>
+        <th>Passes</th>
+        <th>Pass Attempts</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody id="playerTable"></tbody>
+  </table>
 
-  players.forEach(name => {
-    state[name] = { serve: 0, serveAttempts: 0, pass: 0, passAttempts: 0 };
-    const row = document.createElement("tr");
+  <script>
+    window.onload = function () {
+      const tableBody = document.getElementById("playerTable");
+      const state = {};
+      const history = [];
+      const players = Array.from({ length: 14 }, (_, i) => `Player${i + 1}`);
 
-    row.innerHTML = `
-      <td><input type="text" value="${name}" onchange="renamePlayer('${name}', this.value)" id="name-${name}" /></td>
-      <td><button onclick="adjust('${name}', 'serve', 1)">+</button></td>
-      <td><button onclick="adjust('${name}', 'serve', -1)">-</button></td>
-      <td id="${name}-serve">0</td>
-      <td id="${name}-serveAttempts">0</td>
-      <td><button onclick="adjust('${name}', 'pass', 1)">+</button></td>
-      <td><button onclick="adjust('${name}', 'pass', -1)">-</button></td>
-      <td id="${name}-pass">0</td>
-      <td id="${name}-passAttempts">0</td>
-      <td class="total" id="${name}-total">0</td>
-    `;
+      players.forEach(name => {
+        state[name] = { serve: 0, serveAttempts: 0, pass: 0, passAttempts: 0 };
+        const row = document.createElement("tr");
 
-    tableBody.appendChild(row);
-  });
-</script>
+        row.innerHTML = `
+          <td><input type="text" value="${name}" onchange="renamePlayer('${name}', this.value)" id="name-${name}" /></td>
+          <td><button onclick="adjust('${name}', 'serve', 1)">+</button></td>
+          <td><button onclick="adjust('${name}', 'serve', -1)">-</button></td>
+          <td id="${name}-serve">0</td>
+          <td id="${name}-serveAttempts">0</td>
+          <td><button onclick="adjust('${name}', 'pass', 1)">+</button></td>
+          <td><button onclick="adjust('${name}', 'pass', -1)">-</button></td>
+          <td id="${name}-pass">0</td>
+          <td id="${name}-passAttempts">0</td>
+          <td class="total" id="${name}-total">0</td>
+        `;
+
+        tableBody.appendChild(row);
+      });
+
+      // Add dummy functions to avoid errors
+      window.adjust = function (name, skill, delta) {
+        if (!state[name]) return;
+        const key = skill;
+        const attemptsKey = skill + "Attempts";
+        state[name][key] += delta;
+        state[name][attemptsKey]++;
+        document.getElementById(`${name}-${key}`).textContent = state[name][key];
+        document.getElementById(`${name}-${attemptsKey}`).textContent = state[name][attemptsKey];
+        const total = state[name].serve + state[name].pass;
+        document.getElementById(`${name}-total`).textContent = total;
+      };
+
+      window.renamePlayer = function (oldName, newName) {
+        if (newName === oldName || !state[oldName]) return;
+        state[newName] = state[oldName];
+        delete state[oldName];
+        // Optionally: update IDs if needed
+      };
+    };
+  </script>
+</body>
+</html>
