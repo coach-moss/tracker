@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Practice Attendance Tracker</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    button { padding: 4px 8px; margin: 2px; }
+    .eligible { background-color: #d4edda; }
+    .ineligible { background-color: #f8d7da; }
+  </style>
+</head>
+<body>
+  <h1>Practice Attendance Tracker</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Player</th>
+        <th>Unexcused Absences</th>
+        <th>Used Free Pass</th>
+        <th>Eligible for Next Game</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="attendanceTable"></tbody>
+  </table>
+
+  <script>
+    const players = [
+      "Player 1", "Player 2", "Player 3", "Player 4", "Player 5", "Player 6", "Player 7",
+      "Player 8", "Player 9", "Player 10", "Player 11", "Player 12", "Player 13", "Player 14"
+    ];
+
+    const state = {};
+    const table = document.getElementById("attendanceTable");
+
+    players.forEach(name => {
+      state[name] = { absences: 0, usedFreePass: false };
+      const row = document.createElement("tr");
+      row.setAttribute("id", name.replace(/\s/g, ''));
+
+      row.innerHTML = `
+        <td contenteditable="true">${name}</td>
+        <td id="${name}-absences">0</td>
+        <td id="${name}-free">No</td>
+        <td id="${name}-eligible" class="eligible">Yes</td>
+        <td>
+          <button onclick="addUnexcused('${name}')">Add Unexcused</button>
+          <button onclick="resetPlayer('${name}')">Reset</button>
+        </td>
+      `;
+
+      table.appendChild(row);
+    });
+
+    function addUnexcused(player) {
+      if (!state[player].usedFreePass) {
+        state[player].usedFreePass = true;
+        document.getElementById(`${player}-free`).textContent = "Yes";
+      } else {
+        state[player].absences += 1;
+        document.getElementById(`${player}-absences`).textContent = state[player].absences;
+      }
+      updateEligibility(player);
+    }
+
+    function resetPlayer(player) {
+      state[player] = { absences: 0, usedFreePass: false };
+      document.getElementById(`${player}-absences`).textContent = "0";
+      document.getElementById(`${player}-free`).textContent = "No";
+      updateEligibility(player);
+    }
+
+    function updateEligibility(player) {
+      const cell = document.getElementById(`${player}-eligible`);
+      if (state[player].absences > 0) {
+        cell.textContent = "No";
+        cell.className = "ineligible";
+      } else {
+        cell.textContent = "Yes";
+        cell.className = "eligible";
+      }
+    }
+  </script>
+</body>
+</html>
