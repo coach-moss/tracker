@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Volleyball Tracker</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h1 { text-align: center; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    button { padding: 4px 8px; margin: 2px; font-size: 16px; }
+    .total { font-weight: bold; }
+    .controls { text-align: center; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Volleyball Serve & Pass Tracker</h1>
+  <div class="controls">
+    <button onclick="resetScores()">Reset All</button>
+    <button onclick="undoLast()">Undo</button>
+    <button onclick="downloadReport()">Download Report</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Player</th>
+        <th>Serve +</th>
+        <th>Serve -</th>
+        <th>Serve Score</th>
+        <th>Total Serve Attempts</th>
+        <th>Pass +</th>
+        <th>Pass -</th>
+        <th>Pass Score</th>
+        <th>Total Pass Attempts</th>
+        <th>Total Score</th>
+      </tr>
+    </thead>
+    <tbody id="playerTable"></tbody>
+  </table>
+
+  <script>
+    const players = ["Alice", "Bella", "Chloe", "Daisy", "Ella", "Fiona"];
+    const tableBody = document.getElementById("playerTable");
+    const state = {};
+    const history = [];
+
+    players.forEach(name => {
+      state[name] = { serve: 0, serveAttempts: 0, pass: 0, passAttempts: 0 };
+      const row = document.createElement("tr");
+
+      row.innerHTML = `
+        <td>${name}</td>
+        <td><button onclick="adjust('${name}', 'serve', 1)">+</button></td>
+        <td><button onclick="adjust('${name}', 'serve', -1)">-</button></td>
+        <td id="${name}-serve">0</td>
+        <td id="${name}-serveAttempts">0</td>
+        <td><button onclick="adjust('${name}', 'pass', 1)">+</button></td>
+        <td><button onclick="adjust('${name}', 'pass', -1)">-</button></td>
+        <td id="${name}-pass">0</td>
+        <td id="${name}-passAttempts">0</td>
+        <td class="total" id="${name}-total">0</td>
+      `;
+
+      tableBody.appendChild(row);
+    });
+
+    function adjust(player, skill, value) {
+      history.push(JSON.parse(JSON.stringify(state)));
+      state[player][skill] += value;
+      state[player][skill + 'Attempts']++;
+      updateDisplay(player);
+    }
+
+    function updateDisplay(player) {
+      document.getElementById(`${player}-serve`).textContent = state[player].serve;
+      document.getElementById(`${player}-serveAttempts`).textContent = state[player].serveAttempts;
+      document.getElementById(`${player}-pass`).textContent = state[player].pass;
+      document.getElementById(`${player}-passAttempts`).textContent = state[player].passAttempts;
+      document.getElementById(`${player}-total`).textContent = state[player].serve + state[player].pass;
+    }
+
+    function resetScores() {
+      history.push(JSON.parse(JSON.stringify(state)));
+      players.forEach(player => {
+        state[player] = { serve: 0, serveAttempts: 0, pass: 0, passAttempts: 0 };
+        updateDisplay(player);
+      });
+    }
+
+    function undoLast() {
+      if (history.length > 0) {
+        const lastState = history.pop();
+        players.forEach(player => {
+          state[player] = { ...lastState[player] };
+          updateDisplay(player);
+        });
+      }
+    }
+
+    function downloadReport() {
+      let csv = 'Player,Serve +,Serve -,Serve Score,Serve Attempts,Pass +,Pass -,Pass Score,Pass Attempts,Total Score\n';
+      players.forEach(player => {
+        const serveScore = state[player].serve;
+        const serveAttempts = state[player].serveAttempts;
+        const passScore = state[player].pass;
+        const passAttempts = state[player].passAttempts;
+        const totalScore = serveScore + passScore;
+        const serveMinus = serveAttempts - serveScore;
+        const passMinus = passAttempts - passScore;
+
+        csv += `${player},${serveScore},${serveMinus},${serveScore},${serveAttempts},${passScore},${passMinus},${passScore},${passAttempts},${totalScore}\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'volleyball_game_report.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
